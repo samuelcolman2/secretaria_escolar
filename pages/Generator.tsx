@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import type { jsPDF } from 'jspdf';
 import type html2canvas from 'html2canvas';
 
@@ -45,51 +45,7 @@ const Generator: React.FC = () => {
   const [customLogo, setCustomLogo] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Scale state for responsive preview
-  const [scale, setScale] = useState(1);
-  const containerRef = useRef<HTMLDivElement>(null);
   const documentRef = useRef<HTMLDivElement>(null);
-
-  // Effect to calculate scale on resize to fit the ENTIRE page (width and height)
-  useEffect(() => {
-    const calculateScale = () => {
-      if (containerRef.current) {
-        // A4 Dimensions in pixels at 96 DPI
-        const A4_WIDTH_PX = 794;  // 210mm
-        const A4_HEIGHT_PX = 1123; // 297mm
-        
-        const containerWidth = containerRef.current.clientWidth;
-        const containerHeight = containerRef.current.clientHeight;
-        
-        // Padding buffer (give it some breathing room)
-        const paddingX = 40;
-        const paddingY = 40;
-        
-        const availableWidth = Math.max(0, containerWidth - paddingX);
-        const availableHeight = Math.max(0, containerHeight - paddingY);
-        
-        const scaleX = availableWidth / A4_WIDTH_PX;
-        const scaleY = availableHeight / A4_HEIGHT_PX;
-
-        // "Fit Inside": use the smaller scale so both width and height fit
-        const newScale = Math.min(1, scaleX, scaleY); // Never zoom in > 100%
-        
-        setScale(newScale);
-      }
-    };
-
-    // Calculate immediately and on resize
-    calculateScale();
-    // Add a small delay/timeout to ensure layout is settled
-    const timeoutId = setTimeout(calculateScale, 100);
-
-    window.addEventListener('resize', calculateScale);
-    return () => {
-        window.removeEventListener('resize', calculateScale);
-        clearTimeout(timeoutId);
-    };
-  }, []);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -107,8 +63,8 @@ const Generator: React.FC = () => {
 
     try {
       const { jsPDF } = window.jspdf;
-      // Timeout allows React to re-render. 
-      // CRITICAL: Force scale to 1 for capture, wait for render
+      
+      // Allow time for React to render the "Print Mode" (responsive=false) version
       await new Promise(resolve => setTimeout(resolve, 300));
       
       const element = documentRef.current;
@@ -147,8 +103,28 @@ const Generator: React.FC = () => {
 
   return (
     <div className="container mx-auto flex flex-col lg:flex-row gap-8 h-[calc(100vh-100px)]">
+      {/* Styles for the custom scrollbar */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 10px;
+          height: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #1e293b; /* Dark Slate background */
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #0F172A; /* The requested color */
+          border: 1px solid #334155;
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #1e293b;
+        }
+      `}</style>
+
       {/* --- Form Section --- */}
-      <div className="w-full lg:w-1/3 bg-brand-dark p-6 rounded-lg shadow-lg h-full overflow-y-auto border border-slate-700">
+      <div className="w-full lg:w-1/3 bg-brand-dark p-6 rounded-lg shadow-lg h-full overflow-y-auto custom-scrollbar border border-slate-700">
         <h2 className="text-xl font-bold mb-6 border-b pb-2 border-slate-600 text-brand-text">Preencha os Dados</h2>
         
         {/* Logo Upload */}
@@ -201,29 +177,13 @@ const Generator: React.FC = () => {
       </div>
 
       {/* --- Preview Section --- */}
-      {/* 
-          1. flex justify-center items-center: Centers the content perfectly.
-          2. overflow-hidden: Prevents scrolling (since we are scaling to fit).
-          3. w-full h-full: Takes remaining space.
-      */}
-      <div 
-        ref={containerRef} 
-        className="w-full lg:w-2/3 bg-slate-800/50 rounded flex justify-center items-center relative overflow-hidden p-4 border border-dashed border-slate-700"
-      >
-          {/* Wrapper for CSS Scaling */}
-          <div 
-             style={{ 
-                 // If loading (generating PDF), force scale to 1 to capture full resolution. 
-                 // Otherwise, use calculated 'Fit Page' scale.
-                 transform: `scale(${isLoading ? 1 : scale})`, 
-                 // Important: Maintain strict dimensions for the capture area
-                 width: '210mm',
-                 height: '297mm',
-                 transformOrigin: 'center center',
-             }}
-             // Add shadow and transition for smooth resize
-             className={`bg-white shadow-2xl flex-shrink-0 transition-transform duration-200 ${isLoading ? 'absolute top-0 left-0 z-50 pointer-events-none opacity-0' : ''}`}
-          >
+      <div className="w-full lg:w-2/3 bg-slate-800/50 rounded flex flex-col p-4 relative overflow-y-auto custom-scrollbar">
+          {/* 
+            Wrapper for the dashed border. 
+            It hugs the DocumentPreview content instead of the parent container.
+            'w-full' ensures it spans width. 'h-auto' ensures it doesn't stretch empty space.
+          */}
+          <div className="w-full relative h-auto border border-dashed border-slate-700 bg-transparent">
                <DocumentPreview
                   ref={documentRef}
                   logo={customLogo}
@@ -235,18 +195,16 @@ const Generator: React.FC = () => {
                   schoolYear={schoolYear}
                   status={status}
                   cityAndDate={cityAndDate}
+                  responsive={!isLoading}
               />
+              
+              {isLoading && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 z-50 text-white">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-orange mb-4"></div>
+                      <p>Gerando PDF em alta qualidade...</p>
+                  </div>
+              )}
           </div>
-          
-          {/* 
-            Loading Overlay used only when generating the PDF to hide the "jump" to 100% scale 
-          */}
-          {isLoading && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 z-40 text-white">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-orange mb-4"></div>
-                  <p>Gerando PDF em alta qualidade...</p>
-              </div>
-          )}
       </div>
     </div>
   );
