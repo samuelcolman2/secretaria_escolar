@@ -1,5 +1,5 @@
 {
-  "name": "Gerador de Declaração de Transferência",
+  "name": "secretaria_escolar",
   "description": "Uma aplicação web para gerar uma Declaração de Transferência em PDF com campos personalizáveis. Preencha os dados do aluno e baixe o documento pronto para impressão.",
   "requestFramePermissions": []
 }

@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { LOGO_DATA_URI } from '../assets/logo';
 
 const DocumentTextIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -28,6 +27,9 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const isDocumentSectionActive = currentPage === 'dashboard' || currentPage === 'generator';
+    
+    // External logo URL provided by user
+    const logoUrl = "https://iconecolegioecurso.com.br/wp-content/uploads/2022/08/xlogo_icone_site.png.pagespeed.ic_.QgXP3GszLC.webp";
 
     return (
         <aside 
@@ -47,9 +49,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage }) => {
             {/* Logo Section - Adapts size based on collapse state */}
             <div className="mb-8 flex justify-center transition-all duration-300">
                  <img 
-                    src={LOGO_DATA_URI}
+                    src={logoUrl}
                     alt="Ícone Colégio e Curso Logo" 
-                    className={`transition-all duration-300 ${isCollapsed ? 'w-10' : 'w-24'} mx-auto`}
+                    className={`transition-all duration-300 ${isCollapsed ? 'w-10' : 'w-24'} mx-auto object-contain`}
                 />
             </div>
 
